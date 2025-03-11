@@ -1,0 +1,213 @@
+/* Netflix Style Carousel */
+.netflix-carousel {
+  position: relative;
+  width: 100%;
+  height: 80vh; /* Increased height for more immersive feel */
+  overflow: hidden;
+  margin-bottom: 0; /* Remove margin to connect with next section */
+}
+
+/* Background image with parallax effect */
+.carousel-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 0.7s ease-in-out, transform 1.5s ease-in-out;
+  transform: scale(1.05);
+  z-index: 1;
+}
+
+.carousel-background.transitioning {
+  opacity: 0.5;
+}
+
+/* Gradient overlay to make text readable */
+.gradient-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.8) 30%,
+    rgba(0, 0, 0, 0.5) 60%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  z-index: 2;
+}
+
+/* Content positioning */
+.carousel-content {
+  position: absolute;
+  bottom: 20%;
+  left: 10%;
+  max-width: 50%;
+  color: white;
+  z-index: 3;
+  animation: fadeInUp 0.7s ease-in-out;
+}
+
+@keyframes fadeInUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Title styling */
+.feature-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  animation: titleReveal 0.8s ease-in-out;
+  line-height: 1.1;
+}
+
+@keyframes titleReveal {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Description styling */
+.feature-description {
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+  animation: descriptionReveal 0.8s ease-in-out 0.2s both;
+}
+
+@keyframes descriptionReveal {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Button styling */
+.feature-button {
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  animation: buttonReveal 0.8s ease-in-out 0.4s both;
+}
+
+@keyframes buttonReveal {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Navigation arrows */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.carousel-arrow:hover {
+  background-color: rgba(90, 143, 0, 0.8);
+  transform: translateY(-50%) scale(1.1);
+  opacity: 1;
+}
+
+.carousel-arrow.prev {
+  left: 20px;
+}
+
+.carousel-arrow.next {
+  right: 20px;
+}
+
+/* Indicators */
+.carousel-indicators {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  z-index: 10;
+}
+
+.carousel-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.carousel-indicator.active {
+  background-color: #5a8f00;
+  transform: scale(1.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .carousel-content {
+    max-width: 70%;
+  }
+  
+  .feature-title {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .netflix-carousel {
+    height: 60vh;
+  }
+  
+  .carousel-content {
+    max-width: 80%;
+    bottom: 20%;
+  }
+  
+  .feature-title {
+    font-size: 2rem;
+  }
+  
+  .feature-description {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .netflix-carousel {
+    height: 50vh;
+  }
+  
+  .carousel-content {
+    left: 5%;
+    max-width: 90%;
+  }
+  
+  .feature-title {
+    font-size: 1.5rem;
+  }
+  
+  .carousel-arrow {
+    width: 40px;
+    height: 40px;
+  }
+}

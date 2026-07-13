@@ -12,70 +12,22 @@ load_dotenv()
 
 class GeminiCropChatbot:
     def __init__(self):
-  
-        self.api_key = os.getenv("GOOGLE_API_KEY", "AIzaSyDJMxmHvenLjjR0YASY15sCHYL4Zvt87Bk")
-        
-        try:
-            print(f"Initializing Gemini API with key: {self.api_key[:5]}...")
-            
- 
-            genai.configure(api_key=self.api_key)
-            
-        
-            self.crop_knowledge = self._load_crop_knowledge()
-            
-       
+        self.api_key = os.getenv("GOOGLE_API_KEY", "")
+        self.model = None
+        self.model_name = "models/gemini-1.5-flash"
+        self.api_key_error = not bool(self.api_key)
+        self.crop_knowledge = self._load_crop_knowledge()
+
+        if self.api_key:
             try:
-                print("Listing available models...")
-                models = genai.list_models()
-                model_names = [model.name for model in models]
-                
-         
-                preferred_models = [
-                    "models/gemini-1.5-pro",
-                    "models/gemini-1.5-flash",
-                    "models/gemini-1.5-pro-latest",
-                    "models/gemini-1.5-flash-latest",
-                    "models/gemini-2.0-pro-exp",
-                    "models/gemini-2.0-flash"
-                ]
-                
-            
-                self.model_name = None
-                for preferred in preferred_models:
-                    if preferred in model_names:
-                        self.model_name = preferred
-                        print(f"Found preferred model: {self.model_name}")
-                        break
-                
-            
-                if not self.model_name:
-                    gemini_models = [name for name in model_names if "gemini" in name.lower()]
-                    if gemini_models:
-                        self.model_name = gemini_models[0]
-                        print(f"Using available model: {self.model_name}")
-                    else:
-                        raise ValueError("No Gemini models found in your account")
-                
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel(self.model_name)
+                print(f"Gemini chatbot ready with model: {self.model_name}")
             except Exception as e:
-                print(f"Error selecting model: {e}")
-                raise
-            
-         
-            print(f"Creating model with name: {self.model_name}")
-            self.model = genai.GenerativeModel(self.model_name)
-            
-         
-            print("Testing model with simple prompt...")
-            test_response = self.model.generate_content("Hello, how are you?")
-            print(f"Test response: {test_response.text[:50]}...")
-            
-            self.api_key_error = False
-            print("Gemini API initialized successfully!")
-            
-        except Exception as e:
-            print(f"Error initializing Gemini API: {e}")
-            self.api_key_error = True
+                print(f"Gemini init error: {e}")
+                self.api_key_error = True
+        else:
+            print("GOOGLE_API_KEY not set — chatbot will use fallback only.")
     
     def _load_crop_knowledge(self):
         """Load crop-specific knowledge base"""
@@ -193,7 +145,8 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+if hasattr(signal, 'SIGTERM'):
+    signal.signal(signal.SIGTERM, signal_handler)
 
 atexit.register(chatbot.cleanup)
 

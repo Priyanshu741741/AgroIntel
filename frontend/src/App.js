@@ -37,8 +37,10 @@ function App() {
               <Route path="/chatbot" element={<ChatbotPage />} />
             </Routes>
           </main>
-          <footer className="bg-dark text-white text-center py-3 mt-5">
-            <p className="mb-0">© {new Date().getFullYear()} AgroIntel</p>
+          <footer className="app-footer text-center py-3 mt-auto">
+            <p className="mb-0" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              © {new Date().getFullYear()} <span className="green">AgroIntel</span> · AI-Powered Crop Monitoring
+            </p>
           </footer>
         </Router>
       </div>

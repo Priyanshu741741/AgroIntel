@@ -1,136 +1,152 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, Form, Button, Spinner } from 'react-bootstrap';
+import { Spinner } from 'react-bootstrap';
 import axios from 'axios';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+const SUGGESTIONS = [
+  { label: 'Tomato diseases', q: 'How do I identify and treat common tomato diseases?' },
+  { label: 'Watering tips',   q: 'What are the best practices for watering crops?' },
+  { label: 'Soil health',     q: 'How can I improve soil fertility naturally?' },
+  { label: 'Pest control',    q: 'What are organic methods to control crop pests?' },
+];
+
 const Chatbot = () => {
-  const [messages, setMessages] = useState([
-    { text: "Hello! I'm your crop care assistant powered by Google AI. How can I help with your farming or gardening questions?", sender: 'bot' }
-  ]);
+  const [messages, setMessages] = useState([{
+    text: "Hello! I'm your AI crop care assistant powered by Google Gemini. Ask me anything about crop diseases, soil health, watering, or farming best practices.",
+    sender: 'bot',
+    source: 'gemini',
+  }]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!input.trim()) return;
-    
-
-    const userMessage = { text: input, sender: 'user' };
-    setMessages(prev => [...prev, userMessage]);
+  const sendMessage = async (text) => {
+    const msg = text.trim();
+    if (!msg) return;
+    setMessages(prev => [...prev, { text: msg, sender: 'user' }]);
     setInput('');
     setIsLoading(true);
-    
     try {
-
-      const response = await axios.post('http://localhost:5000/api/chatbot', {
-        message: input
-      });
-      
-
-      const botMessage = { 
-        text: response.data.response, 
-        sender: 'bot',
-        source: response.data.source 
-      };
-      
-      setMessages(prev => [...prev, botMessage]);
-      
-
-      console.log("Chatbot API response:", response.data);
-      
-    } catch (error) {
-      console.error('Error sending message to chatbot:', error);
-      
-
+      const res = await axios.post(`${API_BASE}/chatbot`, { message: msg });
+      setMessages(prev => [...prev, { text: res.data.response, sender: 'bot', source: res.data.source }]);
+    } catch {
       setMessages(prev => [...prev, {
-        text: "Sorry, I'm having trouble connecting to the server. Please check your internet connection and try again.",
+        text: "Sorry, I can't reach the server right now. Please ensure the Flask backend is running.",
         sender: 'bot',
-        error: true
+        error: true,
       }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const suggestQuestion = (question) => {
-    setInput(question);
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
   };
 
   return (
-    <Card className="chatbot-container">
-      <Card.Header className="d-flex justify-content-between align-items-center">
-        <h5 className="mb-0">Crop Care Assistant</h5>
-        <small className="text-muted">Powered by Google Gemini</small>
-      </Card.Header>
-      <Card.Body className="chatbot-messages">
+    <div className="chatbot-container">
+      {/* Header */}
+      <div style={{
+        padding: '18px 20px',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'rgba(34,197,94,0.05)',
+      }}>
+        <div className="d-flex align-items-center gap-2">
+          <div style={{
+            width: 38, height: 38, borderRadius: '10px',
+            background: 'linear-gradient(135deg,#16a34a,#22c55e)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <i className="bi bi-robot" style={{ color: '#fff', fontSize: '1.1rem' }} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2 }}>Crop Care Assistant</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--green-primary)' }}>● Online · Powered by Gemini</div>
+          </div>
+        </div>
+        <div style={{
+          fontSize: '0.72rem', color: 'var(--text-muted)',
+          background: 'rgba(34,197,94,0.08)', border: '1px solid var(--border)',
+          borderRadius: '20px', padding: '4px 10px',
+        }}>
+          AI
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="chatbot-messages">
         <div className="messages-container">
-          {messages.map((message, index) => (
-            <div 
-              key={index} 
-              className={`message ${message.sender} ${message.error ? 'error' : ''}`}
-            >
-              {message.text}
-              {message.source === 'gemini' && index > 0 && (
-                <div className="ai-badge">AI</div>
+          {messages.map((m, i) => (
+            <div key={i} className={`message ${m.sender}${m.error ? ' error' : ''}`}>
+              {m.text}
+              {m.source === 'gemini' && m.sender === 'bot' && i > 0 && (
+                <div className="ai-badge">Gemini</div>
               )}
             </div>
           ))}
           {isLoading && (
             <div className="message bot loading">
-              <Spinner animation="grow" size="sm" />
-              <Spinner animation="grow" size="sm" className="mx-2" />
-              <Spinner animation="grow" size="sm" />
+              <Spinner animation="grow" size="sm" style={{ color: 'var(--green-primary)' }} />
+              <Spinner animation="grow" size="sm" style={{ color: 'var(--green-primary)' }} className="mx-1" />
+              <Spinner animation="grow" size="sm" style={{ color: 'var(--green-primary)' }} />
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
-      </Card.Body>
-      
-      <div className="suggestion-chips">
-        <Button variant="outline-secondary" size="sm" onClick={() => suggestQuestion("How do I identify tomato diseases?")}>
-          Identify tomato diseases
-        </Button>
-        <Button variant="outline-secondary" size="sm" onClick={() => suggestQuestion("Best practices for watering crops?")}>
-          Watering tips
-        </Button>
-        <Button variant="outline-secondary" size="sm" onClick={() => suggestQuestion("How to improve soil fertility naturally?")}>
-          Soil fertility
-        </Button>
       </div>
-      
-      <Card.Footer>
-        <Form onSubmit={handleSubmit}>
-          <div className="d-flex">
-            <Form.Control
-              type="text"
-              placeholder="Ask about crop care, diseases, or growing tips..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={isLoading}
-            />
-            <Button 
-              type="submit" 
-              variant="primary" 
-              className="ms-2"
-              disabled={isLoading || !input.trim()}
-            >
-              <i className="bi bi-send-fill"></i>
-            </Button>
-          </div>
-        </Form>
-      </Card.Footer>
-    </Card>
+
+      {/* Suggestion chips */}
+      <div className="suggestion-chips">
+        {SUGGESTIONS.map(({ label, q }) => (
+          <button key={label} className="btn" onClick={() => sendMessage(q)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div style={{ padding: '14px 16px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Ask about crop care, diseases, or growing tips…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isLoading}
+            style={{ flex: 1, borderRadius: '12px' }}
+          />
+          <button
+            onClick={() => sendMessage(input)}
+            disabled={isLoading || !input.trim()}
+            style={{
+              width: 42, height: 42,
+              background: !input.trim() || isLoading
+                ? 'rgba(34,197,94,0.2)'
+                : 'linear-gradient(135deg,#16a34a,#22c55e)',
+              border: 'none', borderRadius: '12px', cursor: !input.trim() || isLoading ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, transition: 'all 0.2s',
+            }}
+          >
+            <i className="bi bi-send-fill" style={{ color: '#fff', fontSize: '0.9rem' }} />
+          </button>
+        </div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '6px 0 0', textAlign: 'center' }}>
+          Press Enter to send · AI responses may not always be accurate
+        </p>
+      </div>
+    </div>
   );
 };
 

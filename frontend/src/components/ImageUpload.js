@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Form, Button, Alert, Spinner } from 'react-bootstrap';
+import React, { useState, useRef } from 'react';
+import { Alert, Spinner } from 'react-bootstrap';
 import { analyzeImage } from '../services/api';
 
 const ImageUpload = ({ onAnalysisComplete }) => {
@@ -7,38 +7,34 @@ const ImageUpload = ({ onAnalysisComplete }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef(null);
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  const loadFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    setSelectedFile(file);
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = () => setPreviewUrl(reader.result);
+    reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    
-    if (!selectedFile) {
-      setError('Please select an image to analyze');
-      return;
-    }
-    
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    loadFile(e.dataTransfer.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedFile) { setError('Please select an image first.'); return; }
     setIsLoading(true);
     setError(null);
-    
     try {
       const result = await analyzeImage(selectedFile);
       onAnalysisComplete(result, previewUrl);
-    } catch (error) {
-      setError('Error analyzing image. Please try again.');
-      console.error(error);
+    } catch {
+      setError('Analysis failed — ensure the backend is running and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -46,55 +42,92 @@ const ImageUpload = ({ onAnalysisComplete }) => {
 
   return (
     <div className="upload-container">
-      <h3>Upload Crop Image</h3>
-      
-      {error && <Alert variant="danger">{error}</Alert>}
-      
-      <Form onSubmit={handleSubmit}>
-        <Form.Group className="mb-3">
-          <Form.Label>Select an image of your crop</Form.Label>
-          <Form.Control 
-            type="file" 
-            onChange={handleFileChange}
-            accept="image/*"
-            disabled={isLoading}
-          />
-          <Form.Text className="text-muted">
-            For best results, ensure the image clearly shows the plant's leaves.
-          </Form.Text>
-        </Form.Group>
-        
-        {previewUrl && (
-          <div className="image-preview mb-3">
-            <img 
-              src={previewUrl} 
-              alt="Preview" 
-              style={{ maxWidth: '100%', maxHeight: '300px' }} 
-            />
-          </div>
+      <div className="d-flex align-items-center gap-2 mb-3">
+        <i className="bi bi-cpu-fill" style={{ color: 'var(--green-primary)', fontSize: '1.2rem' }} />
+        <h5 style={{ margin: 0, fontWeight: 700 }}>Upload Crop Image</h5>
+      </div>
+
+      {error && (
+        <Alert className="mb-3" style={{
+          background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)',
+          color: '#fca5a5', borderRadius: '10px', fontSize: '0.88rem',
+        }}>
+          <i className="bi bi-exclamation-circle-fill me-2" />{error}
+        </Alert>
+      )}
+
+      {/* Drop zone */}
+      <div
+        className={`upload-dropzone mb-3${dragOver ? ' drag-over' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        style={{ cursor: 'pointer' }}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => loadFile(e.target.files[0])}
+        />
+        <i className="bi bi-cloud-arrow-up-fill upload-icon" />
+        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
+          {selectedFile ? selectedFile.name : 'Drag & drop or click to browse'}
+        </p>
+        <p style={{ color: 'var(--text-muted)', margin: '4px 0 0', fontSize: '0.78rem' }}>
+          PNG, JPG, WebP · Max 10 MB
+        </p>
+      </div>
+
+      {/* Preview */}
+      {previewUrl && (
+        <div className="image-preview mb-3">
+          <img src={previewUrl} alt="Preview" style={{ maxHeight: 260, width: '100%', objectFit: 'cover' }} />
+        </div>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={!selectedFile || isLoading}
+        style={{
+          width: '100%',
+          padding: '13px',
+          background: !selectedFile || isLoading
+            ? 'rgba(34,197,94,0.25)'
+            : 'linear-gradient(135deg, #16a34a, #22c55e)',
+          border: 'none',
+          borderRadius: '12px',
+          color: '#fff',
+          fontWeight: 700,
+          fontSize: '0.95rem',
+          cursor: !selectedFile || isLoading ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          boxShadow: !selectedFile || isLoading ? 'none' : '0 6px 20px rgba(34,197,94,0.3)',
+          transition: 'all 0.3s ease',
+        }}
+      >
+        {isLoading ? (
+          <>
+            <Spinner animation="border" size="sm" />
+            Analysing…
+          </>
+        ) : (
+          <>
+            <i className="bi bi-search" />
+            Analyse Crop
+          </>
         )}
-        
-        <Button 
-          variant="primary" 
-          type="submit"
-          disabled={!selectedFile || isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Spinner
-                as="span"
-                animation="border"
-                size="sm"
-                role="status"
-                aria-hidden="true"
-              />
-              <span className="ms-2">Analyzing...</span>
-            </>
-          ) : (
-            'Analyze Image'
-          )}
-        </Button>
-      </Form>
+      </button>
+
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', textAlign: 'center', marginTop: 10, marginBottom: 0 }}>
+        <i className="bi bi-info-circle me-1" />
+        For best results, ensure leaves are clearly visible and well-lit.
+      </p>
     </div>
   );
 };

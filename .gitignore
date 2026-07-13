@@ -55,13 +55,17 @@ Thumbs.db
 
 # Dataset files (potentially large)
 *.csv
-*.json
 *.npy
 
 # Exclude the plant disease dataset as it might be large
 plant_disease_dataset/
 
-# Keep model structure but ignore model files
-!models/
-models/*
-!models/.gitkeep
+# Model binary files (large) — but keep metadata JSON
+backend/models/crop_health_model/variables/
+backend/models/crop_health_model/*.pb
+
+# Always track these important files
+!backend/models/crop_health_model/class_indices.json
+!backend/models/crop_health_model/health_categories.json
+!frontend/package.json
+!frontend/package-lock.json

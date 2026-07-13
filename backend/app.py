@@ -1,8 +1,10 @@
 
 import os
+import platform
 
-os.environ['GRPC_ENABLE_FORK_SUPPORT'] = '0'
-os.environ['GRPC_POLL_STRATEGY'] = 'epoll1'
+if platform.system() != 'Windows':
+    os.environ['GRPC_ENABLE_FORK_SUPPORT'] = '0'
+    os.environ['GRPC_POLL_STRATEGY'] = 'epoll1'
 
 import json
 import numpy as np
@@ -31,7 +33,7 @@ app = Flask(__name__)
 CORS(app)
 
 
-MODEL_PATH = "C:/Users/Priyanshu/Desktop/crop-monitoring-app/backend/models/crop_health_model"
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "crop_health_model")
 
 model = None
 class_indices = None

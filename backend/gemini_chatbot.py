@@ -1,31 +1,30 @@
 import os
 import json
-import google.generativeai as genai
+import requests
+import urllib3
 from dotenv import load_dotenv
 import gc
 import atexit
 import signal
 import sys
 
-
 load_dotenv()
+
+# Respect SSL_VERIFY env var (set false on corporate networks)
+_ssl_verify = os.getenv('SSL_VERIFY', 'true').lower() != 'false'
+if not _ssl_verify:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+GEMINI_REST_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 class GeminiCropChatbot:
     def __init__(self):
         self.api_key = os.getenv("GOOGLE_API_KEY", "")
-        self.model = None
-        self.model_name = "models/gemini-1.5-flash"
         self.api_key_error = not bool(self.api_key)
         self.crop_knowledge = self._load_crop_knowledge()
 
         if self.api_key:
-            try:
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel(self.model_name)
-                print(f"Gemini chatbot ready with model: {self.model_name}")
-            except Exception as e:
-                print(f"Gemini init error: {e}")
-                self.api_key_error = True
+            print(f"Gemini chatbot ready (REST mode, key: {self.api_key[:6]}...)")
         else:
             print("GOOGLE_API_KEY not set — chatbot will use fallback only.")
     
@@ -85,54 +84,47 @@ User Question: {user_input}
 Your helpful response:"""
     
     def get_response(self, user_input):
-        """Generate a response to the user input using Gemini"""
-  
+        """Generate a response using Gemini REST API (avoids gRPC SSL issues)."""
         if self.api_key_error:
             return {
-                "response": "I'm sorry, the AI service is currently unavailable. Please check your API key configuration.",
+                "response": "AI service unavailable — GOOGLE_API_KEY not configured.",
                 "source": "error"
             }
-        
+
         try:
-
             prompt = self._create_system_prompt(user_input)
-            
-            # Generate content
-            print(f"Sending prompt to Gemini: {user_input[:30]}...")
-            response = self.model.generate_content(prompt)
-            
-            return {
-                "response": response.text,
-                "source": "gemini"
-            }
-            
-        except Exception as e:
-            print(f"Error generating Gemini chatbot response: {e}")
-            error_message = str(e)
-            
+            print(f"Sending to Gemini REST: {user_input[:40]}...")
 
-            if "quota" in error_message.lower():
-                error_msg = "I'm sorry, we've exceeded our quota for AI requests. Please try again later."
-            elif "permission" in error_message.lower() or "access" in error_message.lower():
-                error_msg = "I'm sorry, there's an authentication issue with our AI service. Please check the API key configuration."
-            elif "network" in error_message.lower() or "connection" in error_message.lower():
-                error_msg = "I'm sorry, there's a network issue connecting to the AI service. Please check your internet connection."
-            else:
-                error_msg = "I'm sorry, there was an error processing your request. We'll use our backup system instead."
-            
-            return {
-                "response": error_msg,
-                "source": "error"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800}
             }
+            resp = requests.post(
+                f"{GEMINI_REST_URL}?key={self.api_key}",
+                json=payload,
+                verify=_ssl_verify,
+                timeout=20
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            return {"response": text, "source": "gemini"}
+
+        except Exception as e:
+            print(f"Gemini REST error: {e}")
+            err = str(e).lower()
+            if "quota" in err or "429" in err:
+                msg = "API quota exceeded. Please try again later."
+            elif "401" in err or "403" in err or "api_key" in err:
+                msg = "Authentication error — please check your GOOGLE_API_KEY."
+            else:
+                msg = "AI service error. Using fallback."
+            return {"response": msg, "source": "error"}
     
     def cleanup(self):
-        """Clean up resources to prevent gRPC shutdown warnings"""
-        print("Cleaning up Gemini API resources...")
-
         gc.collect()
-    
+
     def __del__(self):
-   
         self.cleanup()
 
 
@@ -140,15 +132,11 @@ chatbot = GeminiCropChatbot()
 
 
 def signal_handler(sig, frame):
-    print('Received shutdown signal, cleaning up...')
-    chatbot.cleanup()
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
 if hasattr(signal, 'SIGTERM'):
     signal.signal(signal.SIGTERM, signal_handler)
-
-atexit.register(chatbot.cleanup)
 
 
 if __name__ == "__main__":

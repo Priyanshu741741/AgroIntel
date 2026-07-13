@@ -1,10 +1,16 @@
 
 import os
 import platform
+import urllib3
 
 if platform.system() != 'Windows':
     os.environ['GRPC_ENABLE_FORK_SUPPORT'] = '0'
     os.environ['GRPC_POLL_STRATEGY'] = 'epoll1'
+
+# On corporate networks with SSL inspection, disable verify only for local dev
+SSL_VERIFY = os.getenv('SSL_VERIFY', 'true').lower() != 'false'
+if not SSL_VERIFY:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import json
 import numpy as np
@@ -157,15 +163,15 @@ def get_weather():
     try:
        
         url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
-        response = requests.get(url)
+        response = requests.get(url, verify=SSL_VERIFY)
         current_weather = response.json()
-        
+
         if 'cod' in current_weather and current_weather['cod'] != 200:
             return jsonify({'error': current_weather['message']}), 400
-        
-     
+
+
         forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric"
-        forecast_response = requests.get(forecast_url)
+        forecast_response = requests.get(forecast_url, verify=SSL_VERIFY)
         forecast = forecast_response.json()
         
         if 'cod' in forecast and forecast['cod'] != '200':
@@ -258,7 +264,8 @@ def chat():
             print("Gemini API error, falling back to simple chatbot")
             response = simple_chatbot.get_response(user_message)
         
-        print(f"Sending response: {response['response'][:50]}... (source: {response['source']})")
+        preview = response['response'][:50].encode('ascii', errors='replace').decode()
+        print(f"Sending response: {preview}... (source: {response['source']})")
         
         return jsonify({
             'response': response['response'],
